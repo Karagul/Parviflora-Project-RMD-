@@ -1,8 +1,12 @@
 # Munging / Wrangling
 
-Sys.setlocale(category = "LC_ALL", locale = "Polish")
+#Sys.setlocale(category = "LC_ALL", locale = "Polish")
 
 summary_import <- function(summary_fileList){
+  
+  fileList <- list.files("data/", full.names = TRUE)
+  storeFile <- fileList[str_detect(fileList, "Stores")]
+  stores_df <- read_excel(storeFile) %>% arrange(`Store ID`)
   
   summary_df <- read_csv(summary_fileList, locale = locale(encoding = "ISO-8859-1"), col_types = cols(
                         `STORE NAME` = col_character(),
@@ -130,11 +134,11 @@ summary_import <- function(summary_fileList){
   colNames[colNames == "TOTAL"]       <- "TOTAL_REVENUE"
   
   colnames(summary_df) <- colNames
-  summary_df$FILE_NAME <- summary_fileList
   
-  summary_df <- summary_df[,c("FILE_NAME",
-                              "STORE_NAME", 
-                              "STORE_ID",
+  summary_df$STORE_ID <- str_sub(summary_df$STORE_ID, -3)
+
+  summary_df <- summary_df[,c("STORE_ID",
+                              "STORE_NAME",
                               "AZALEA_COUNT",
                               "AZALEA_REVENUE",
                               "BEGONIA_COUNT",
@@ -146,35 +150,92 @@ summary_import <- function(summary_fileList){
                               "TOTAL_COUNT",
                               "TOTAL_REVENUE")]
   
+  
   # POLISH LETTERS ----
-  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME,
-                                   "PARVIFLORA \\?OM\\?A")] <- "PARVIFLORA LOMZA"
-  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME,
-                                   "PARVIFLORA \\?WIEBODZIN")] <- "PARVIFLORA SWIEBODZIN"
-  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME,
-                                   "PARVIFLORA OSTRO\\?\\?KA")] <- "PARVIFLORA OSTROLEKA"
-  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME,
-                                   "PARVIFLORA \\?ÓD\\?")] <- "PARVIFLORA LÓDZ"
-  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME,
-                                   "PARVIFLORA GDA\\?SK")] <- "PARVIFLORA GDANSK"
-  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME,
-                                   "PARVIFLORA POZNA\\?")] <- "PARVIFLORA POZNAN"
-  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME,
-                                   "PARVIFLORA SUWA\\?KI")] <- "PARVIFLORA SUWALKI"
-  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME,
-                                   "PARVIFLORA TORU\\?")] <- "PARVIFLORA TORUN"
-  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME,
-                                   "PARVIFLORA W\\?CHOCK")] <- "PARVIFLORA WACHOCK"
-  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME,
-                                   "PARVIFLORA BIA\\?YSTOK")] <- "PARVIFLORA BIALYSTOK"
-  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME,
-                                   "PARVIFLORA WROC\\?AW")] <- "PARVIFLORA WROCLAW"
-  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME,
-                                   "PARVIFLORA CHE\\?M")] <- "PARVIFLORA CHELM"
-  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME,
-                                   "PARVIFLORA PRZEMY\\?L")] <- "PARVIFLORA PRZEMYSL"
+  
+  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "\\?OM\\?A")] <- 
+    str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "\\?OM\\?A")],
+                pattern = "\\?OM\\?A", 
+                replacement = "LOMZA")
+  
+  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "\\?WIEBODZIN")] <- 
+    str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "\\?WIEBODZIN")],
+                pattern = "\\?WIEBODZIN", 
+                replacement = "SWIEBODZIN")
+  
+  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "OSTRO\\?\\?KA")] <- 
+    str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "OSTRO\\?\\?KA")],
+                pattern = "OSTRO\\?\\?KA", 
+                replacement = "OSTROLEKA")
+  
+  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "\\?ÓD\\?")] <- 
+    str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "\\?ÓD\\?")],
+                pattern = "\\?ÓD\\?", 
+                replacement = "LÓDZ")
+  
+  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "GDA\\?SK")] <- 
+    str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "GDA\\?SK")],
+                pattern = "GDA\\?SK", 
+                replacement = "GDANSK")
+  
+  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "POZNA\\?")] <- 
+    str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "POZNA\\?")],
+                pattern = "POZNA\\?", 
+                replacement = "POZNAN")
+  
+  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "SUWA\\?KI")] <- 
+    str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "SUWA\\?KI")],
+                pattern = "SUWA\\?KI", 
+                replacement = "SUWALKI")
+  
+  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "TORU\\?")] <- 
+    str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "TORU\\?")],
+                pattern = "TORU\\?", 
+                replacement = "TORUN")
+  
+  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "W\\?CHOCK")] <- 
+    str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "W\\?CHOCK")],
+                pattern = "W\\?CHOCK", 
+                replacement = "WACHOCK")
+  
+  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "BIA\\?YSTOK")] <- 
+    str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "BIA\\?YSTOK")],
+                pattern = "BIA\\?YSTOK", 
+                replacement = "BIALYSTOK")
+  
+  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "WROC\\?AW")] <- 
+    str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "WROC\\?AW")],
+                pattern = "WROC\\?AW", 
+                replacement = "WROCLAW")
+  
+  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "CHE\\?M")] <- 
+    str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "CHE\\?M")],
+                pattern = "CHE\\?M", 
+                replacement = "CHELM")
+  
+  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "PRZEMY\\?L")] <- 
+    str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "PRZEMY\\?L")],
+                pattern = "PRZEMY\\?L", 
+                replacement = "PRZEMYSL")
   
   #----
+  
+  summary_df    <- merge(summary_df, stores_df, by.x = "STORE_ID",
+                       by.y = "Store ID", all = TRUE)
+  
+  discrepancies <- summary_df[(is.na(summary_df$STORE_NAME) == TRUE) | (is.na(summary_df$`Store Name`) == TRUE),
+                              c("STORE_ID", "STORE_NAME", "Store Name")]
+  
+  matches       <- drop_na(summary_df)
+
+  summary_df    <- arrange(summary_df[-(which(is.na(summary_df$STORE_NAME))), -ncol(summary_df)], STORE_NAME)
+  
+  
+  summary_df    <- list(summary_df, 
+                     discrepancies,
+                     matches,
+                     summary_fileList)
+  
   
   rm(colNames, i, path, tmp1)
   return(summary_df)
