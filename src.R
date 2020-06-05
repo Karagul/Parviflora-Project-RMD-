@@ -5,7 +5,7 @@ Sys.setlocale(category = "LC_ALL", locale = "Polish")
 # Libraries ----
 
 #install.packages("pacman")
-pacman::p_load(pacman,tidyverse,stringr, readr,readxl,lubridate)
+pacman::p_load(pacman,tidyverse,stringr, readr,readxl,lubridate,stringi)
 source("mung.R")
 
 # Data Import ----
@@ -13,11 +13,17 @@ source("mung.R")
 fileList <- list.files("data/", full.names = TRUE)
 summary_fileList <- as.list(fileList[str_detect(fileList, "Summary of Sales")])
 
-stores_df <- read_excel(fileList[str_detect(fileList, "Stores")]) 
-summaries <- lapply(summary_fileList, summary_import)
+
+store_index <- read_excel(fileList[str_detect(fileList, "Stores")])
+summaries <- lapply(summary_fileList, summary_import, loc_index = store_index)
 
 
+##### tests-----
 
+stri_trans_general(stores_df$`Store Name`, "Latin-ASCII")
+
+Encoding(summary_df$`STORE NAME`[1])
+iconv(summary_df$STORE_NAME[1], from = "", to = "UTF-8")
 
 # tests ------
 heh2 <- summaries[[1]][[1]]
@@ -25,7 +31,6 @@ heh <- arrange(summaries[[1]][[1]], STORE_NAME)
 discrepancies <- heh[(is.na(heh$STORE_NAME) == TRUE) | (is.na(heh$`Store Name`) == TRUE), c("STORE_ID", "STORE_NAME", "Store Name")]
 
 heh$STORE_NAME[is.na(heh$`Store Name`) == FALSE] <- heh$`Store Name`[is.na(heh$`Store Name`) == FALSE]
-
 
 #heh <- summaries[[1]]
 #print("LOMZA")

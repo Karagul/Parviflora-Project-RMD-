@@ -1,12 +1,20 @@
 # Munging / Wrangling
 
-#Sys.setlocale(category = "LC_ALL", locale = "Polish")
 
-summary_import <- function(summary_fileList){
+summary_import <- function(summary_fileList, loc_index){
   
-  fileList <- list.files("data/", full.names = TRUE)
-  storeFile <- fileList[str_detect(fileList, "Stores")]
-  stores_df <- read_excel(storeFile) %>% arrange(`Store ID`)
+  
+  loc_index$Location <- stri_trans_general(loc_index$`Store Name`, "Latin-ASCII") %>% str_to_upper() %>% 
+                        str_replace(pattern = "PARVIFLORA ", replacement = "")
+  
+  loc_index   <- arrange(loc_index, Location)
+  
+  loc_index   <- add_row(loc_index, 
+                        `Store ID`   = 299,
+                        `Store Name` = "Parviflora",
+                         Location    = "PARVIFLORA",
+                        .before = 1)
+  
   
   summary_df <- read_csv(summary_fileList, locale = locale(encoding = "ISO-8859-1"), col_types = cols(
                         `STORE NAME` = col_character(),
@@ -127,31 +135,18 @@ summary_import <- function(summary_fileList){
   
   colNames[colNames == "STORE #"]     <- "STORE_ID"
   colNames[colNames == "STORE NAME"]  <- "STORE_NAME"
-  colNames[colNames == "AZALEA"]      <- "AZALEA_REVENUE"
-  colNames[colNames == "BEGONIA"]     <- "BEGONIA_REVENUE"
-  colNames[colNames == "CARNATION"]   <- "CARNATION_REVENUE"
-  colNames[colNames == "DAFFODIL"]    <- "DAFFODIL_REVENUE"
-  colNames[colNames == "TOTAL"]       <- "TOTAL_REVENUE"
+  colNames[colNames == "AZALEA"]      <- "AZALEA_TOTAL"
+  colNames[colNames == "BEGONIA"]     <- "BEGONIA_TOTAL"
+  colNames[colNames == "CARNATION"]   <- "CARNATION_TOTAL"
+  colNames[colNames == "DAFFODIL"]    <- "DAFFODIL_TOTAL"
+  colNames[colNames == "TOTAL"]       <- "TOTAL_VALUE"
   
   colnames(summary_df) <- colNames
   
   summary_df$STORE_ID <- str_sub(summary_df$STORE_ID, -3)
-
-  summary_df <- summary_df[,c("STORE_ID",
-                              "STORE_NAME",
-                              "AZALEA_COUNT",
-                              "AZALEA_REVENUE",
-                              "BEGONIA_COUNT",
-                              "BEGONIA_REVENUE",
-                              "CARNATION_COUNT",
-                              "CARNATION_REVENUE",
-                              "DAFFODIL_COUNT",
-                              "DAFFODIL_REVENUE",
-                              "TOTAL_COUNT",
-                              "TOTAL_REVENUE")]
   
   
-  # POLISH LETTERS ----
+  # POLISH ENCODING ----
   
   summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "\\?OM\\?A")] <- 
     str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "\\?OM\\?A")],
@@ -220,24 +215,59 @@ summary_import <- function(summary_fileList){
   
   #----
   
-  summary_df    <- merge(summary_df, stores_df, by.x = "STORE_ID",
-                       by.y = "Store ID", all = TRUE)
+  summary_df$STORE_NAME <- stri_trans_general(summary_df$STORE_NAME, "Latin-ASCII") %>% str_to_upper()
   
-  discrepancies <- summary_df[(is.na(summary_df$STORE_NAME) == TRUE) | (is.na(summary_df$`Store Name`) == TRUE),
-                              c("STORE_ID", "STORE_NAME", "Store Name")]
+  summary_df  <- arrange(summary_df, STORE_NAME)
   
-  matches       <- drop_na(summary_df)
-
-  summary_df    <- arrange(summary_df[-(which(is.na(summary_df$STORE_NAME))), -ncol(summary_df)], STORE_NAME)
+  summary_df$LOCATION <- NA
+  summary_df$GROSS    <- 0
+  summary_df$RETAIL   <- 0
+  summary_df$OTHER    <- 0
   
+  for(i in 1:nrow(loc_index)){
+    
+    pattern <- loc_index$Location[i]
+    
+    for(j in 1:nrow(summary_df)){
+      
+      if((str_detect(summary_df$STORE_NAME[j], pattern)) == TRUE){
+        summary_df$LOCATION[j] <- pattern
+      }
+    }
+  }
   
-  summary_df    <- list(summary_df, 
-                     discrepancies,
-                     matches,
-                     summary_fileList)
+  for(i in 1:nrow(summary_df)){
+    
+    if((str_detect(summary_df$STORE_NAME[i], "GROSS")) == TRUE){
+      summary_df$GROSS[i] <- 1
+    }
+    else if((str_detect(summary_df$STORE_NAME[i], "RETAIL")) == TRUE){
+      summary_df$RETAIL[i] <- 1
+    }
+    else if((str_detect(summary_df$STORE_NAME[i], "OTHER")) == TRUE){
+      summary_df$OTHER[i] <- 1
+    }
+  }
   
+  summary_df <- summary_df[,c("STORE_ID",
+                              "STORE_NAME",
+                              "LOCATION",
+                              "GROSS",
+                              "RETAIL",
+                              "OTHER",
+                              "AZALEA_COUNT",
+                              "AZALEA_TOTAL",
+                              "BEGONIA_COUNT",
+                              "BEGONIA_TOTAL",
+                              "CARNATION_COUNT",
+                              "CARNATION_TOTAL",
+                              "DAFFODIL_COUNT",
+                              "DAFFODIL_TOTAL",
+                              "TOTAL_COUNT",
+                              "TOTAL_VALUE")]
   
-  rm(colNames, i, path, tmp1)
+  summary_df    <- list(summary_df, summary_fileList)
+  
   return(summary_df)
 }
   
