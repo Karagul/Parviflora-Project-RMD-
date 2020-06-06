@@ -1,6 +1,6 @@
 # Source code
 
-Sys.setlocale(category = "LC_ALL", locale = "Polish")
+#Sys.setlocale(category = "LC_ALL", locale = "Polish")
 
 # Libraries ----
 
@@ -12,10 +12,90 @@ source("mung.R")
 
 fileList <- list.files("data/", full.names = TRUE)
 summary_fileList <- as.list(fileList[str_detect(fileList, "Summary of Sales")])
+sheets_titles <- as.list(excel_sheets(fileList[str_detect(fileList, "Daffodils")]))
 
 
 store_index <- read_excel(fileList[str_detect(fileList, "Stores")])
-summaries <- lapply(summary_fileList, summary_import, loc_index = store_index)
+summaries   <- lapply(summary_fileList, summary_import, loc_index = store_index)
+daffodils   <- lapply(sheets_titles, daffodils_import, fileList = fileList)
+
+
+# Views
+view(daffodils[[1]][[2]][1])
+view(summaries[[2]][1])
+
+
+
+
+
+
+
+
+# DAFFO------
+
+fileList <- list.files("data/", full.names = TRUE)
+
+sheets_titles <- as.list(excel_sheets(fileList[str_detect(fileList, "Daffodils")]))
+
+daffodils   <- read_excel(fileList[str_detect(fileList, "Daffodils")], 
+                          sheet = 1,
+                          col_names = FALSE,
+                          skip = 6)
+
+dateRange   <- as.character(daffodils[1,2])
+
+daffodils   <- daffodils[-c(1:3, nrow(daffodils),nrow(daffodils)-1),]
+
+sep_index   <- which(rowSums(is.na(daffodils)) > 4)
+
+daffodils[1:(sep_index[1]-1), c(2,3)] <- daffodils[1:(sep_index[1]-1), c(4,5)]
+daffodils[1:(sep_index[1]-1), c(4,5)] <- NA
+
+#validation point (get it work)
+#daffodils <- daffodils[,names(which(colSums(is.na(daffodils)) == nrow(daffodils)))]
+
+daffodils <- daffodils[,-c(4,5)]
+colnames(daffodils) <- c("ENTRY_CAT", 
+                         "DAFFODILS_TOTAL", 
+                         "DAFFODILS_COUNT")
+
+daffodils$DAFFODILS_TOTAL <- daffodils$DAFFODILS_TOTAL %>% as.numeric
+daffodils$DAFFODILS_COUNT <- daffodils$DAFFODILS_COUNT %>% as.numeric
+
+
+listDaffo <- vector("list", length(sep_index))
+container <- vector("list", 2)
+
+cap <- 1
+index <-1
+
+
+for(i in sep_index){
+  
+  container[[1]] <- daffodils[cap:(i-1),]
+  container[[2]] <- container[[1]][1:3,]
+  container[[1]] <- container[[1]][-c(1:3),]
+  container[[1]] <- drop_na(container[[1]])
+  container[[1]] <- arrange(container[[1]], ENTRY_CAT)
+  
+  if(is.na(container[[2]][1,1]) != TRUE){
+    
+    container[[2]] <- "SUMMARY"
+    
+  }
+  else if(rowSums(is.na(container[[2]][1,])) == 3){
+    
+    container[[2]] <- as.character(container[[2]][2,c("DAFFODILS_COUNT")])
+    
+  }
+  
+  listDaffo[[index]] <- container
+  cap <- i
+  index <- index + 1
+  
+}
+
+
 
 
 ##### tests-----

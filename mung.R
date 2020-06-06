@@ -1,7 +1,7 @@
 # Munging / Wrangling
 
 
-summary_import <- function(summary_fileList, loc_index){
+summary_import    <- function(summary_fileList, loc_index){
   
   
   loc_index$Location <- stri_trans_general(loc_index$`Store Name`, "Latin-ASCII") %>% str_to_upper() %>% 
@@ -219,19 +219,23 @@ summary_import <- function(summary_fileList, loc_index){
   
   summary_df  <- arrange(summary_df, STORE_NAME)
   
-  summary_df$LOCATION <- NA
-  summary_df$GROSS    <- 0
-  summary_df$RETAIL   <- 0
-  summary_df$OTHER    <- 0
+  summary_df$LOCATION     <- NA
+  summary_df$LOCATION_ID  <- NA
+  summary_df$GROSS        <- 0
+  summary_df$RETAIL       <- 0
+  summary_df$OTHER        <- 0
   
   for(i in 1:nrow(loc_index)){
     
     pattern <- loc_index$Location[i]
+    id      <- loc_index$`Store ID`[i]
     
     for(j in 1:nrow(summary_df)){
       
       if((str_detect(summary_df$STORE_NAME[j], pattern)) == TRUE){
-        summary_df$LOCATION[j] <- pattern
+        
+        summary_df$LOCATION[j]    <- pattern
+        summary_df$LOCATION_ID[j] <- id
       }
     }
   }
@@ -252,6 +256,7 @@ summary_import <- function(summary_fileList, loc_index){
   summary_df <- summary_df[,c("STORE_ID",
                               "STORE_NAME",
                               "LOCATION",
+                              "LOCATION_ID",
                               "GROSS",
                               "RETAIL",
                               "OTHER",
@@ -269,5 +274,68 @@ summary_import <- function(summary_fileList, loc_index){
   summary_df    <- list(summary_df, summary_fileList)
   
   return(summary_df)
+}
+
+daffodils_import  <- function(sheets_titles, fileList){
+  
+  
+  
+  daffodils <- read_excel(fileList[str_detect(fileList, "Daffodils")], 
+                          sheet = sheets_titles,
+                          col_names = FALSE,
+                          skip = 6)
+  
+  #output
+  dateRange   <- as.character(daffodils[1,2])
+  
+  
+  daffodils   <- daffodils[-c(1:3, nrow(daffodils),nrow(daffodils)-1),]
+  
+  sep_index   <- which(rowSums(is.na(daffodils)) > 4)
+  
+  daffodils[1:(sep_index[1]-1), c(2,3)] <- daffodils[1:(sep_index[1]-1), c(4,5)]
+  daffodils[1:(sep_index[1]-1), c(4,5)] <- NA
+  daffodils <- daffodils[,-c(4,5)]
+  
+  colnames(daffodils) <- c("ENTRY_CAT", 
+                           "DAFFODILS_TOTAL", 
+                           "DAFFODILS_COUNT")
+  
+  daffodils$DAFFODILS_TOTAL <- daffodils$DAFFODILS_TOTAL %>% as.numeric
+  daffodils$DAFFODILS_COUNT <- daffodils$DAFFODILS_COUNT %>% as.numeric
+  
+  
+  listDaffo <- vector("list", length(sep_index))
+  container <- vector("list", 2)
+  peg <- 1
+  index <-1
+  
+  for(i in sep_index){
+    
+    container[[1]] <- daffodils[peg:(i-1),]
+    container[[2]] <- container[[1]][1:3,]
+    container[[1]] <- container[[1]][-c(1:3),]
+    container[[1]] <- drop_na(container[[1]])
+    container[[1]] <- arrange(container[[1]], ENTRY_CAT)
+    
+    if(is.na(container[[2]][1,1]) != TRUE){
+      
+      container[[2]] <- c("SUMMARY", dateRange, sheets_titles)
+      
+    }
+    else if(rowSums(is.na(container[[2]][1,])) == 3){
+      
+      container[[2]] <- c(as.character(container[[2]][2,c("DAFFODILS_COUNT")]), dateRange, sheets_titles)
+      
+    }
+    
+    listDaffo[[index]] <- container
+    peg <- i
+    index <- index + 1
+    
+  }
+  
+  return(listDaffo)
+  
 }
   
