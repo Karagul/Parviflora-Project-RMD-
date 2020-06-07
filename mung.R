@@ -285,7 +285,7 @@ daffodils_import  <- function(sheets_titles, fileList){
                           col_names = FALSE,
                           skip = 6)
   
-  #output
+
   dateRange   <- as.character(daffodils[1,2])
   
   
@@ -339,3 +339,70 @@ daffodils_import  <- function(sheets_titles, fileList){
   
 }
   
+daffodils_aggregator <- function(daffodils){
+  
+  title <- daffodils[[1]][[2]][[3]]
+  
+  ENTRY_CAT <- c(unique(daffodils[[1]][[1]][[1]]), "Totals")
+  
+  aggr <- tibble(data.frame(matrix(nrow = length(ENTRY_CAT), ncol = 2 * length(daffodils))))
+  aggr <- cbind(ENTRY_CAT, aggr)
+  aggr$ENTRY_CAT <- as.character(aggr$ENTRY_CAT)
+  
+  m <- 1
+  
+  for(j in seq(2, 2*length(daffodils),2)){
+    
+    for(i in 1:nrow(aggr)){
+      
+      id <- daffodils[[m]][[2]][1]
+      colnames(aggr)[j]   <- str_c(id, "TOTAL", sep = "_")
+      colnames(aggr)[j+1] <- str_c(id, "COUNT", sep = "_")
+      
+      tmp <- aggr$ENTRY_CAT[i]
+      aggr[i,j:(j+1)] <- colSums(daffodils[[m]][[1]][daffodils[[m]][[1]][,1] == tmp, 2:3])
+      
+    }
+    m <- m + 1
+    
+  }
+  
+  aggr[aggr$ENTRY_CAT == "Totals",2:3] <- aggr[aggr$ENTRY_CAT == "Summary Totals",2:3]
+  aggr <- aggr[-which(aggr$ENTRY_CAT == "Summary Totals"), ]
+  
+  
+  aggr$GROSS  <- 0
+  aggr$RETAIL <- 0
+  aggr$OTHER  <- 0
+  
+  for(i in 1:nrow(aggr)){
+    
+    if((str_detect(aggr$ENTRY_CAT[i], "Consumer Orders")) == TRUE){
+      
+      aggr$RETAIL[i] <- 1
+      
+    }
+    else if((str_detect(aggr$ENTRY_CAT[i], "Small Business Orders")) == TRUE | 
+            (str_detect(aggr$ENTRY_CAT[i], "Corporate Orders"))      == TRUE){
+      
+      aggr$GROSS[i] <- 1
+      
+    }
+    else if((str_detect(aggr$ENTRY_CAT[i], "Totals")) == TRUE){
+      
+      next
+      
+    }
+    else{
+      
+      aggr$OTHER[i]  <- 1
+      
+    }
+  }
+  
+  
+  aggr <- list(aggr, title)
+  
+  return(aggr)
+  
+}
