@@ -370,7 +370,6 @@ daffodils_aggregator <- function(daffodils){
   aggr[aggr$ENTRY_CAT == "Totals",2:3] <- aggr[aggr$ENTRY_CAT == "Summary Totals",2:3]
   aggr <- aggr[-which(aggr$ENTRY_CAT == "Summary Totals"), ]
   
-
   
   aggr$GROSS  <- 0
   aggr$RETAIL <- 0
