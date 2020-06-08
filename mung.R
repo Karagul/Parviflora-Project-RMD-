@@ -1,7 +1,7 @@
 # Munging / Wrangling
 
 
-summary_import    <- function(summary_fileList, loc_index){
+summary_import        <- function(summary_fileList, loc_index){
   
   
   loc_index$Location <- stri_trans_general(loc_index$`Store Name`, "Latin-ASCII") %>% str_to_upper() %>% 
@@ -271,12 +271,15 @@ summary_import    <- function(summary_fileList, loc_index){
                               "TOTAL_COUNT",
                               "TOTAL_VALUE")]
   
+  
+  summary_df$STORE_ID <- as.numeric(summary_df$STORE_ID)
+  
   summary_df    <- list(summary_df, summary_fileList)
   
   return(summary_df)
 }
 
-daffodils_import  <- function(sheets_titles, fileList){
+daffodils_import      <- function(sheets_titles, fileList){
   
   
   
@@ -339,7 +342,7 @@ daffodils_import  <- function(sheets_titles, fileList){
   
 }
   
-daffodils_aggregator <- function(daffodils){
+daffodils_aggregator  <- function(daffodils){
   
   title <- daffodils[[1]][[2]][[3]]
   
@@ -404,5 +407,327 @@ daffodils_aggregator <- function(daffodils){
   aggr <- list(aggr, title)
   
   return(aggr)
+  
+}
+
+merger                <- function(summaries,daffo_aggr){
+  
+  # PAIR IDENTIFICATION
+  summary_title <- unlist(str_split(summaries[[2]], " "))
+  summary_title <- summary_title[(length(summary_title)-1):length(summary_title)]
+  summary_title <- unlist(str_split(summary_title, pattern = "\\."))[1:2]
+  summary_month <- str_sub(summary_title[1], 1, 3)
+  summary_year  <- str_sub(summary_title[2], 3, 4)
+  summary_title <- str_c(summary_month,summary_year, sep = "")
+  
+  
+  for(q in 1:length(daffo_aggr)){
+    
+    if(daffo_aggr[[q]][[2]] == summary_title){
+      
+      break
+    }
+  }
+  
+  
+  stash_total   <- matrix(0,nrow=1,ncol=3)
+  colnames(stash_total) <- c("GROSS", "RETAIL", "OTHER")
+  rownames(stash_total) <- "VALUE"
+  
+  stash_count   <- matrix(0,nrow=1,ncol=3)
+  colnames(stash_count) <- c("GROSS", "RETAIL", "OTHER")
+  rownames(stash_count) <- "VALUE"
+  
+  
+  
+  for(i in seq(4, ncol(daffo_aggr[[1]][[1]]) - 4, 2)){
+    
+    colnameTotal  <- colnames(daffo_aggr[[q]][[1]])[i]
+    colnameTotal  <- as.numeric(str_extract(colnameTotal, "[^_]+"))
+    
+    
+    stash_total[stash_total != 0] <- 0
+    stash_count[stash_count != 0] <- 0
+    
+    
+    # FILLING STASHES #####
+    for(j in 1:(nrow(daffo_aggr[[q]][[1]])-1)){
+      
+      if(daffo_aggr[[q]][[1]][j,ncol(daffo_aggr[[q]][[1]])] == 1){
+        
+        stash_total[1,"OTHER"] <- stash_total[1,"OTHER"]    + daffo_aggr[[q]][[1]][j,i]
+        stash_count[1,"OTHER"] <- stash_count[1,"OTHER"]    + daffo_aggr[[q]][[1]][j,i+1]
+      }
+      else if(daffo_aggr[[q]][[1]][j,ncol(daffo_aggr[[q]][[1]])-1] == 1){
+        
+        stash_total[1,"RETAIL"] <- stash_total[1,"RETAIL"]  + daffo_aggr[[q]][[1]][j,i]
+        stash_count[1,"RETAIL"] <- stash_count[1,"RETAIL"]  + daffo_aggr[[q]][[1]][j,i+1]
+      }
+      else if(daffo_aggr[[q]][[1]][j,ncol(daffo_aggr[[q]][[1]])-2] == 1){
+        
+        stash_total[1,"GROSS"] <- stash_total[1,"GROSS"]    + daffo_aggr[[q]][[1]][j,i]
+        stash_count[1,"GROSS"] <- stash_count[1,"GROSS"]    + daffo_aggr[[q]][[1]][j,i+1]
+      }
+      
+    }
+    
+    
+    # FEEDING #########
+    for(p in 1:3){
+      
+      # GROSS #####
+      if(p == 1){
+        
+        
+        if(colnameTotal %in% summaries[[1]]$LOCATION_ID == TRUE & 
+           (1 %in% unlist(summaries[[1]] %>% filter(LOCATION_ID == colnameTotal) %>% select(GROSS))) == TRUE){
+          
+          w <- which(summaries[[1]]$LOCATION_ID == colnameTotal & summaries[[1]]$GROSS == 1)
+          
+          summaries[[1]][w, "DAFFODIL_TOTAL"]  <- as.numeric(summaries[[1]][w, "DAFFODIL_TOTAL"]) + stash_total[1,p]
+          summaries[[1]][w, "TOTAL_VALUE"]     <- as.numeric(summaries[[1]][w, "TOTAL_VALUE"])    + 
+            as.numeric(summaries[[1]][w, "DAFFODIL_TOTAL"])
+          
+          summaries[[1]][w, "DAFFODIL_COUNT"] <- as.numeric(summaries[[1]][w, "DAFFODIL_COUNT"])  + stash_count[1,p]
+          summaries[[1]][w, "TOTAL_COUNT"]     <- as.numeric(summaries[[1]][w, "TOTAL_COUNT"])    + 
+            as.numeric(summaries[[1]][w, "DAFFODIL_COUNT"])
+          
+        }
+        else if(colnameTotal %in% summaries[[1]]$STORE_ID == TRUE &
+                (1 %in% unlist(summaries[[1]] %>% filter(STORE_ID == colnameTotal) %>% select(GROSS))) == TRUE){
+          
+          w <- which(summaries[[1]]$STORE_ID == colnameTotal & summaries[[1]]$GROSS == 1)
+          
+          summaries[[1]][w, "DAFFODIL_TOTAL"] <- as.numeric(summaries[[1]][w, "DAFFODIL_TOTAL"])  + stash_total[1,p]
+          summaries[[1]][w, "TOTAL_VALUE"]     <- as.numeric(summaries[[1]][w, "TOTAL_VALUE"])    + 
+            as.numeric(summaries[[1]][w, "DAFFODIL_TOTAL"])
+          
+          summaries[[1]][w, "DAFFODIL_COUNT"] <- as.numeric(summaries[[1]][w, "DAFFODIL_COUNT"])  + stash_count[1,p]
+          summaries[[1]][w, "TOTAL_COUNT"]     <- as.numeric(summaries[[1]][w, "TOTAL_COUNT"])    + 
+            as.numeric(summaries[[1]][w, "DAFFODIL_COUNT"])
+          
+        }else{
+          
+          summaries[[1]] <- add_row(summaries[[1]])
+          summaries[[1]][nrow(summaries[[1]]), c(1,4:17)] <- 0
+          
+          if(colnameTotal %in% summaries[[1]]$LOCATION_ID == TRUE){
+            
+            summaries[[1]][nrow(summaries[[1]]), 3] <- 
+              as.character(summaries[[1]][which(summaries[[1]]$LOCATION_ID == colnameTotal)[1],"LOCATION"])
+            
+            summaries[[1]][nrow(summaries[[1]]), 2] <- 
+              str_c("PARVIFLORA",
+                    as.character(summaries[[1]][which(summaries[[1]]$LOCATION_ID == colnameTotal)[1],"LOCATION"]),
+                    "GROSS",
+                    sep = " ")
+            
+          }
+          else if(colnameTotal %in% summaries[[1]]$STORE_ID == TRUE){
+            
+            summaries[[1]][nrow(summaries[[1]]), 3] <- 
+              as.character(summaries[[1]][which(summaries[[1]]$STORE_ID == colnameTotal)[1],"LOCATION"])
+            
+            summaries[[1]][nrow(summaries[[1]]), 2] <- 
+              str_c("PARVIFLORA",
+                    as.character(summaries[[1]][which(summaries[[1]]$STORE_ID == colnameTotal)[1],"LOCATION"]),
+                    "GROSS",
+                    sep = " ")
+            
+          }else{
+            
+            summaries[[1]][nrow(summaries[[1]]), 2:3] <- "MISSING"
+          }
+          
+          summaries[[1]][nrow(summaries[[1]]), c("STORE_ID",
+                                                 "LOCATION_ID",
+                                                 "GROSS", 
+                                                 "DAFFODIL_TOTAL", 
+                                                 "DAFFODIL_COUNT")] <- list(colnameTotal, colnameTotal, 1, stash_total[1,p], stash_count[1,p])
+          
+          summaries[[1]][nrow(summaries[[1]]), "TOTAL_VALUE"] <- 
+            as.numeric(summaries[[1]][nrow(summaries[[1]]), "TOTAL_VALUE"]) + 
+            as.numeric(summaries[[1]][nrow(summaries[[1]]), "DAFFODIL_TOTAL"])
+          
+          summaries[[1]][nrow(summaries[[1]]), "TOTAL_COUNT"] <- 
+            as.numeric(summaries[[1]][nrow(summaries[[1]]), "TOTAL_COUNT"]) + 
+            as.numeric(summaries[[1]][nrow(summaries[[1]]), "DAFFODIL_COUNT"])
+          
+        }
+        
+      }
+      
+      # RETAIL #####
+      if(p == 2){
+        
+        
+        if(colnameTotal %in% summaries[[1]]$LOCATION_ID == TRUE &
+           (1 %in% unlist(summaries[[1]] %>% filter(LOCATION_ID == colnameTotal) %>% select(RETAIL))) == TRUE){
+          
+          w <- which(summaries[[1]]$LOCATION_ID == colnameTotal & summaries[[1]]$RETAIL == 1)
+          
+          summaries[[1]][w, "DAFFODIL_TOTAL"]  <- as.numeric(summaries[[1]][w, "DAFFODIL_TOTAL"]) + stash_total[1,p]
+          summaries[[1]][w, "TOTAL_VALUE"]     <- as.numeric(summaries[[1]][w, "TOTAL_VALUE"])    + 
+            as.numeric(summaries[[1]][w, "DAFFODIL_TOTAL"])
+          
+          summaries[[1]][w, "DAFFODIL_COUNT"] <- as.numeric(summaries[[1]][w, "DAFFODIL_COUNT"])  + stash_count[1,p]
+          summaries[[1]][w, "TOTAL_COUNT"]    <- as.numeric(summaries[[1]][w, "TOTAL_COUNT"])     + 
+            as.numeric(summaries[[1]][w, "DAFFODIL_COUNT"])
+          
+          
+        }
+        else if(colnameTotal %in% summaries[[1]]$STORE_ID == TRUE &
+                (1 %in% unlist(summaries[[1]] %>% filter(STORE_ID == colnameTotal) %>% select(RETAIL))) == TRUE){
+          
+          w <- which(summaries[[1]]$STORE_ID == colnameTotal & summaries[[1]]$RETAIL == 1)
+          
+          summaries[[1]][w, "DAFFODIL_TOTAL"]  <- as.numeric(summaries[[1]][w, "DAFFODIL_TOTAL"]) + stash_total[1,p]
+          summaries[[1]][w, "TOTAL_VALUE"]     <- as.numeric(summaries[[1]][w, "TOTAL_VALUE"])    + 
+            as.numeric(summaries[[1]][w, "DAFFODIL_TOTAL"])
+          
+          summaries[[1]][w, "DAFFODIL_COUNT"] <- as.numeric(summaries[[1]][w, "DAFFODIL_COUNT"])  + stash_count[1,p]
+          summaries[[1]][w, "TOTAL_COUNT"]    <- as.numeric(summaries[[1]][w, "TOTAL_COUNT"])     + 
+            as.numeric(summaries[[1]][w, "DAFFODIL_COUNT"])
+          
+        }else{
+          
+          summaries[[1]] <- add_row(summaries[[1]])
+          summaries[[1]][nrow(summaries[[1]]), c(1,4:17)] <- 0
+          
+          if(colnameTotal %in% summaries[[1]]$LOCATION_ID == TRUE){
+            
+            summaries[[1]][nrow(summaries[[1]]), 3] <- 
+              as.character(summaries[[1]][which(summaries[[1]]$LOCATION_ID == colnameTotal)[1],"LOCATION"])
+            
+            summaries[[1]][nrow(summaries[[1]]), 2] <- 
+              str_c("PARVIFLORA",
+                    as.character(summaries[[1]][which(summaries[[1]]$LOCATION_ID == colnameTotal)[1],"LOCATION"]),
+                    "RETAIL",
+                    sep = " ")
+            
+          }
+          else if(colnameTotal %in% summaries[[1]]$STORE_ID == TRUE){
+            
+            summaries[[1]][nrow(summaries[[1]]), 3] <- 
+              as.character(summaries[[1]][which(summaries[[1]]$STORE_ID == colnameTotal)[1],"LOCATION"])
+            
+            summaries[[1]][nrow(summaries[[1]]), 2] <- 
+              str_c("PARVIFLORA",
+                    as.character(summaries[[1]][which(summaries[[1]]$STORE_ID == colnameTotal)[1],"LOCATION"]),
+                    "RETAIL",
+                    sep = " ")
+            
+          }else{
+            summaries[[1]][nrow(summaries[[1]]), 2:3] <- "MISSING"
+          }
+          
+          summaries[[1]][nrow(summaries[[1]]), c("STORE_ID", 
+                                                 "LOCATION_ID",
+                                                 "RETAIL",
+                                                 "DAFFODIL_TOTAL", 
+                                                 "DAFFODIL_COUNT")] <- list(colnameTotal, colnameTotal, 1, stash_total[1,p], stash_count[1,p])
+          
+          summaries[[1]][nrow(summaries[[1]]), "TOTAL_VALUE"] <- 
+            as.numeric(summaries[[1]][nrow(summaries[[1]]), "TOTAL_VALUE"]) + 
+            as.numeric(summaries[[1]][nrow(summaries[[1]]), "DAFFODIL_TOTAL"])
+          
+          summaries[[1]][nrow(summaries[[1]]), "TOTAL_COUNT"] <- 
+            as.numeric(summaries[[1]][nrow(summaries[[1]]), "TOTAL_COUNT"]) + 
+            as.numeric(summaries[[1]][nrow(summaries[[1]]), "DAFFODIL_COUNT"])
+          
+        }
+        
+      }
+      
+      # OTHER #####
+      if(p == 3){
+        
+        
+        if(colnameTotal %in% summaries[[1]]$LOCATION_ID == TRUE &
+           (1 %in% unlist(summaries[[1]] %>% filter(LOCATION_ID == colnameTotal) %>% select(OTHER))) == TRUE){
+          
+          w <- which(summaries[[1]]$LOCATION_ID == colnameTotal & summaries[[1]]$OTHER == 1)
+          
+          summaries[[1]][w, "DAFFODIL_TOTAL"]  <- as.numeric(summaries[[1]][w, "DAFFODIL_TOTAL"]) + stash_total[1,p]
+          summaries[[1]][w, "TOTAL_VALUE"]     <- as.numeric(summaries[[1]][w, "TOTAL_VALUE"])    + 
+            as.numeric(summaries[[1]][w, "DAFFODIL_TOTAL"])
+          
+          summaries[[1]][w, "DAFFODIL_COUNT"] <- as.numeric(summaries[[1]][w, "DAFFODIL_COUNT"])  + stash_count[1,p]
+          summaries[[1]][w, "TOTAL_COUNT"]     <- as.numeric(summaries[[1]][w, "TOTAL_COUNT"])    + 
+            as.numeric(summaries[[1]][w, "DAFFODIL_COUNT"])
+          
+        }
+        else if(colnameTotal %in% summaries[[1]]$STORE_ID == TRUE &
+                (1 %in% unlist(summaries[[1]] %>% filter(STORE_ID == colnameTotal) %>% select(OTHER))) == TRUE){
+          
+          w <- which(summaries[[1]]$STORE_ID == colnameTotal & summaries[[1]]$OTHER == 1)
+          
+          summaries[[1]][w, "DAFFODIL_TOTAL"]  <- as.numeric(summaries[[1]][w, "DAFFODIL_TOTAL"]) + stash_total[1,p]
+          summaries[[1]][w, "TOTAL_VALUE"]     <- as.numeric(summaries[[1]][w, "TOTAL_VALUE"])    + 
+            as.numeric(summaries[[1]][w, "DAFFODIL_TOTAL"])
+          
+          summaries[[1]][w, "DAFFODIL_COUNT"] <- as.numeric(summaries[[1]][w, "DAFFODIL_COUNT"])  + stash_count[1,p]
+          summaries[[1]][w, "TOTAL_COUNT"]     <- as.numeric(summaries[[1]][w, "TOTAL_COUNT"])    + 
+            as.numeric(summaries[[1]][w, "DAFFODIL_COUNT"])
+          
+        }else{
+          
+          summaries[[1]] <- add_row(summaries[[1]])
+          summaries[[1]][nrow(summaries[[1]]), c(1,4:17)] <- 0
+          
+          if(colnameTotal %in% summaries[[1]]$LOCATION_ID == TRUE){
+            
+            summaries[[1]][nrow(summaries[[1]]), 3] <- 
+              as.character(summaries[[1]][which(summaries[[1]]$LOCATION_ID == colnameTotal)[1],"LOCATION"])
+            
+            summaries[[1]][nrow(summaries[[1]]), 2] <- 
+              str_c("PARVIFLORA",
+                    as.character(summaries[[1]][which(summaries[[1]]$LOCATION_ID == colnameTotal)[1],"LOCATION"]),
+                    "OTHER",
+                    sep = " ")
+            
+          }
+          else if(colnameTotal %in% summaries[[1]]$STORE_ID == TRUE){
+            
+            summaries[[1]][nrow(summaries[[1]]), 3] <- 
+              as.character(summaries[[1]][which(summaries[[1]]$STORE_ID == colnameTotal)[1],"LOCATION"])
+            
+            summaries[[1]][nrow(summaries[[1]]), 2] <- 
+              str_c("PARVIFLORA",
+                    as.character(summaries[[1]][which(summaries[[1]]$STORE_ID == colnameTotal)[1],"LOCATION"]),
+                    "OTHER",
+                    sep = " ")
+            
+          }else{
+            summaries[[1]][nrow(summaries[[1]]), 2:3] <- "MISSING"
+          }
+          
+          summaries[[1]][nrow(summaries[[1]]), c("STORE_ID",
+                                                 "LOCATION_ID",
+                                                 "OTHER",
+                                                 "DAFFODIL_TOTAL", 
+                                                 "DAFFODIL_COUNT")] <- list(colnameTotal,colnameTotal, 1, stash_total[1,p], stash_count[1,p])
+          
+          summaries[[1]][nrow(summaries[[1]]), "TOTAL_VALUE"] <- 
+            as.numeric(summaries[[1]][nrow(summaries[[1]]), "TOTAL_VALUE"]) + 
+            as.numeric(summaries[[1]][nrow(summaries[[1]]), "DAFFODIL_TOTAL"])
+          
+          summaries[[1]][nrow(summaries[[1]]), "TOTAL_COUNT"] <- 
+            as.numeric(summaries[[1]][nrow(summaries[[1]]), "TOTAL_COUNT"]) + 
+            as.numeric(summaries[[1]][nrow(summaries[[1]]), "DAFFODIL_COUNT"])
+          
+        }
+        
+      }
+    }
+  }
+  
+  
+  summaries[[1]] <- summaries[[1]][-which(summaries[[1]]$TOTAL_VALUE == 0), ]
+  
+  merged_data <- list(arrange(summaries[[1]], LOCATION),
+                      summary_title)
+  
+  return(merged_data)
   
 }
