@@ -1,0 +1,80 @@
+---
+title: "Parviflora_MonthlySales"
+author: "Group"
+date: "07/06/2020"
+output:
+  
+  ioslides_presentation: default
+  beamer_presentation: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+pacman::p_load(pacman,tidyverse,stringr,readr,readxl,lubridate,stringi,zoo)
+source("mung.R")
+library(knitr)
+library(gridExtra)
+
+# Data Import ----
+
+fileList <- list.files("data/", full.names = TRUE)
+summary_fileList <- as.list(fileList[str_detect(fileList, "Summary of Sales")])
+sheets_titles <- as.list(excel_sheets(fileList[str_detect(fileList, "Daffodils")]))
+
+
+store_index <- read_excel(fileList[str_detect(fileList, "Stores")])
+summaries   <- lapply(summary_fileList, summary_import, loc_index = store_index)
+daffodils   <- lapply(sheets_titles, daffodils_import, fileList = fileList)
+
+daffo_aggr  <- lapply(daffodils, daffodils_aggregator)
+
+merged      <- lapply(summaries, merger, daffo_aggr)
+```
+
+## R Markdown
+
+This is an R Markdown presentation. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
+
+## Quick facts
+
+- Analyzed period: `r date_v = c()
+for (x in 1:length(summary_fileList)){
+date = gsub("([A-z])(\\d)", "\\1 \\2", merged[[x]][[2]])
+date_v = c(date_v, date)
+}
+date_df = data.frame(date=date_v)
+date_df$date = as.yearmon(date_df$date, format = '%b %y')
+paste0(min(date_df$date)," - ", max(date_df$date))`
+- Total sales in Q1: `r  total = 0
+for (x in 1:length(summary_fileList)) { subsum = sum(merged[[x]][[1]][,'TOTAL_VALUE'])
+total = total + subsum}
+total`
+- 
+- Bullet 3
+
+## Top locations trend
+
+```{r, echo = FALSE, }
+top_locations(5)
+```
+
+##  
+
+```{r, echo = FALSE, }
+grid.arrange(
+monthly_single('AZALEA_TOTAL'),
+monthly_single('BEGONIA_TOTAL'),
+monthly_single('CARNATION_TOTAL'),
+monthly_single('DAFFODIL_TOTAL'),
+ncol=2, nrow =2)
+
+```
+
+## Slide with Plot
+
+```{r pressure}
+plot(pressure)
+```
+

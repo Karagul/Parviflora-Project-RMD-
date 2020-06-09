@@ -1,5 +1,6 @@
 # Munging / Wrangling
 
+# Data processing functions
 
 summary_import        <- function(summary_fileList, loc_index){
   
@@ -741,4 +742,65 @@ merger                <- function(summaries,daffo_aggr){
   
   return(merged_data)
   
+}
+
+# Markdown functions
+
+monthly_single        <- function(flower){
+  
+  
+  date = gsub("([A-z])(\\d)", "\\1 \\2", merged[[1]][2])
+  
+  totals = data.frame('REVENUE' = sum(merged[[1]][[1]][,flower]), 'DATE' = date)
+  
+  for (x in 2:length(summary_fileList)){
+    
+    date = gsub("([A-z])(\\d)", "\\1 \\2", merged[[x]][2])
+    
+    totals = rbind(totals,list(sum(merged[[x]][[1]][,flower]),date))
+    
+  }
+  
+  totals = totals %>% mutate(DATE = as.yearmon(DATE, format = "%b %y"))
+  
+  return (ggplot(data=totals, aes(DATE, REVENUE))+geom_line()+theme_bw()+ggtitle('Total revenue evolution',strsplit(flower, '_')[[1]])+xlab('MONTH'))
+  
+}
+
+top_locations         <- function(number){
+  
+  options(scipen=10000)
+  
+  df <- merged[[1]][[1]]
+  df$MONTH <- gsub("([A-z])(\\d)", "\\1 \\2", merged[[1]][2])
+  df_final = df
+  
+  for (x in 2:length(summary_fileList)){
+    df <- merged[[x]][[1]]
+    df$MONTH <- gsub("([A-z])(\\d)", "\\1 \\2", merged[[x]][2])
+    df_final <- rbind(df_final, df)
+  }
+  
+  df_final <- df_final[,c('LOCATION','TOTAL_VALUE','MONTH')]
+  
+  df_final_agg = aggregate(.~LOCATION+MONTH, data = df_final, FUN = sum)
+  
+  df_final_agg_month = aggregate(TOTAL_VALUE~LOCATION, data = df_final_agg, FUN = sum)
+  df_final_agg_month = df_final_agg_month[order(-df_final_agg_month[,2]),]
+  
+  df_final_gg = df_final_agg %>% filter(LOCATION %in% df_final_agg_month[1:number,1])
+  df_final_gg = df_final_gg %>% mutate(MONTH = as.yearmon(MONTH, format = "%b %y"))
+  df_final_gg = df_final_gg[order(df_final_gg[,2]),]
+  df_final_gg = df_final_gg %>% mutate(MONTH_CHAR = as.character(MONTH))
+  
+  plot <- ggplot(df_final_gg, aes(x = reorder(LOCATION, -TOTAL_VALUE),  y = TOTAL_VALUE, fill = reorder(MONTH_CHAR, MONTH)))+
+    geom_bar(stat="identity",position=position_dodge2()) + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5), axis.title.y= element_blank())+
+    xlab('LOCATION')+
+    ylab('REVENUE')+
+    theme_bw()+
+    labs(fill='MONTHS')+
+    ggtitle('Total revenue evolution in top 5 locations')
+  
+  return (plot)
 }
