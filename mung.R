@@ -763,7 +763,7 @@ monthly_single        <- function(flower){
   
   totals = totals %>% mutate(DATE = as.yearmon(DATE, format = "%b %y"))
   
-  return (ggplot(data=totals, aes(DATE, REVENUE))+geom_line()+theme_bw()+ggtitle('Total revenue evolution',strsplit(flower, '_')[[1]])+xlab('MONTH'))
+  return (ggplot(data=totals, aes(DATE, REVENUE))+geom_line(color='steelblue')+theme_bw()+ggtitle('Total revenue evolution',strsplit(flower, '_')[[1]])+xlab('MONTH'))
   
 }
 

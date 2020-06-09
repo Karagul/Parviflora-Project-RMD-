@@ -3,7 +3,7 @@
 # Libraries ----
 
 install.packages("pacman")
-pacman::p_load(pacman,tidyverse,stringr, readr,readxl,lubridate,stringi,zoo)
+pacman::p_load(pacman,tidyverse,stringr, readr,readxl,lubridate,stringi,zoo, gridExtra)
 source("mung.R")
 
 # Data Import ----
@@ -21,13 +21,15 @@ daffo_aggr  <- lapply(daffodils, daffodils_aggregator)
 
 merged      <- lapply(summaries, merger, daffo_aggr)
 
+
 # Output Views ----
 
-view(summaries[[3]][1])
-view(daffodils[[1]][[2]][1])
-view(daffo_aggr[[3]][1])
-view(merged[[3]][[1]])
+# view(summaries[[3]][1])
+# view(daffodils[[1]][[2]][1])
+# view(daffo_aggr[[3]][1])
+# view(merged[[3]][[1]])
 
 # Export ----
 
-write_excel_csv(merged[[3]][[1]], merged[[3]][[2]])
+#write_excel_csv(merged[[3]][[1]], merged[[3]][[2]])
+

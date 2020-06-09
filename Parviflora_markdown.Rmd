@@ -1,7 +1,7 @@
 ---
-title: "Parviflora_MonthlySales"
-author: "Group"
-date: "07/06/2020"
+title: "Parviflora Monthly Report"
+author: "Pawel Bagniuk, Nikita Batsenko, Wojciech Pierzchala, Piotr Sokol"
+date: "10/06/2020"
 output:
   
   ioslides_presentation: default
@@ -10,34 +10,11 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
-pacman::p_load(pacman,tidyverse,stringr,readr,readxl,lubridate,stringi,zoo)
-source("mung.R")
-library(knitr)
-library(gridExtra)
-
-# Data Import ----
-
-fileList <- list.files("data/", full.names = TRUE)
-summary_fileList <- as.list(fileList[str_detect(fileList, "Summary of Sales")])
-sheets_titles <- as.list(excel_sheets(fileList[str_detect(fileList, "Daffodils")]))
-
-
-store_index <- read_excel(fileList[str_detect(fileList, "Stores")])
-summaries   <- lapply(summary_fileList, summary_import, loc_index = store_index)
-daffodils   <- lapply(sheets_titles, daffodils_import, fileList = fileList)
-
-daffo_aggr  <- lapply(daffodils, daffodils_aggregator)
-
-merged      <- lapply(summaries, merger, daffo_aggr)
+pacman::p_load(pacman,tidyverse,stringr,readr,readxl,lubridate,stringi,zoo,scales,knitr,gridExtra)
+source("src.R")
 ```
 
-## R Markdown
-
-This is an R Markdown presentation. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
-
-## Quick facts
+## Data overview
 
 - Analyzed period: `r date_v = c()
 for (x in 1:length(summary_fileList)){
@@ -47,20 +24,64 @@ date_v = c(date_v, date)
 date_df = data.frame(date=date_v)
 date_df$date = as.yearmon(date_df$date, format = '%b %y')
 paste0(min(date_df$date)," - ", max(date_df$date))`
-- Total sales in Q1: `r  total = 0
+- Total number of transactions: `r total = 0
+for (x in 1:length(summary_fileList)) { subsum = sum(merged[[x]][[1]][,'TOTAL_COUNT'])
+total = total + subsum}
+format(total, scientific = NA, big.mark = ' ')`
+- Total sales: `r total = 0
 for (x in 1:length(summary_fileList)) { subsum = sum(merged[[x]][[1]][,'TOTAL_VALUE'])
 total = total + subsum}
-total`
-- 
-- Bullet 3
+format(total, scientific = NA, big.mark = ' ')`
+- Daffodils Retail Sales: `r total = 0
+for (x in 1:length(summary_fileList)) { subsum = sum(merged[[x]][[1]][merged[[x]][[1]]$RETAIL == 1,'DAFFODIL_TOTAL'])
+total = total + subsum}
+format(total, scientific = NA, big.mark = ' ')`
+- Daffodils Gross Sales: `r total = 0
+for (x in 1:length(summary_fileList)) { subsum = sum(merged[[x]][[1]][merged[[x]][[1]]$GROSS == 1,'DAFFODIL_TOTAL'])
+total = total + subsum}
+format(total, scientific = NA, big.mark = ' ')`
+- Share of daffodil sales: `r total = 0
+for (x in 1:length(summary_fileList)) { subsum = sum(merged[[x]][[1]][,'TOTAL_VALUE'])
+total = total + subsum}
+total
 
-## Top locations trend
+daffodils_total = 0
+for (x in 1:length(summary_fileList)) { subsum = sum(merged[[x]][[1]][,'DAFFODIL_TOTAL'])
+daffodils_total = daffodils_total + subsum}
+ label_percent(0.01)(daffodils_total/total)`
+- Share of azalea sales: `r total = 0
+for (x in 1:length(summary_fileList)) { subsum = sum(merged[[x]][[1]][,'TOTAL_VALUE'])
+total = total + subsum}
+
+azalea_total = 0
+for (x in 1:length(summary_fileList)) { subsum = sum(merged[[x]][[1]][,'AZALEA_TOTAL'])
+azalea_total = azalea_total + subsum}
+ label_percent(0.01)(azalea_total/total)`
+- Share of begonia sales: `r total = 0
+for (x in 1:length(summary_fileList)) { subsum = sum(merged[[x]][[1]][,'TOTAL_VALUE'])
+total = total + subsum}
+
+begonia_total = 0
+for (x in 1:length(summary_fileList)) { subsum = sum(merged[[x]][[1]][,'BEGONIA_TOTAL'])
+begonia_total = begonia_total + subsum}
+ label_percent(0.01)(begonia_total/total)`
+- Share of carnation sales: `r total = 0
+for (x in 1:length(summary_fileList)) { subsum = sum(merged[[x]][[1]][,'TOTAL_VALUE'])
+total = total + subsum}
+
+carnation_total = 0
+for (x in 1:length(summary_fileList)) { subsum = sum(merged[[x]][[1]][,'CARNATION_TOTAL'])
+carnation_total = carnation_total + subsum}
+ label_percent(0.01)(carnation_total/total)`
+
+
+## Top locations sales trend
 
 ```{r, echo = FALSE, }
 top_locations(5)
 ```
 
-##  
+## Flowers sales trend
 
 ```{r, echo = FALSE, }
 grid.arrange(
@@ -72,9 +93,64 @@ ncol=2, nrow =2)
 
 ```
 
-## Slide with Plot
+## Daffodil sales by location
 
-```{r pressure}
-plot(pressure)
+```{r, echo = FALSE, }
+df <- merged[[1]][[1]]
+df_final = df
+
+for (x in 2:length(summary_fileList)){
+  df <- merged[[x]][[1]]
+  df_final <- rbind(df_final, df)
+}
+
+df_final <- df_final[,c('LOCATION','DAFFODIL_TOTAL','DAFFODIL_COUNT')]
+df_final_agg = aggregate(.~LOCATION, data = df_final, FUN = sum)
+
+df_final_agg = df_final_agg %>% mutate(DAFFODIL_TOTAL = (DAFFODIL_TOTAL)/length(summary_fileList), DAFFODIL_COUNT = (DAFFODIL_COUNT)/length(summary_fileList))
+
+df_final_agg$Avg_transaction_value <- with(df_final_agg, DAFFODIL_TOTAL/DAFFODIL_COUNT)
+
+df_final_agg = df_final_agg[order(-df_final_agg[,'Avg_transaction_value']),]
+
+df_final_agg = df_final_agg[!(df_final_agg$LOCATION == 'MISSING'),]
+
+plot <- ggplot(df_final_agg, aes(x = reorder(LOCATION, -DAFFODIL_TOTAL),  y = DAFFODIL_TOTAL))+
+  geom_bar(stat="identity",position=position_dodge2(), fill='steelblue') + 
+  xlab('LOCATION')+
+  ylab('REVENUE')+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5), axis.title.y= element_blank())+
+  ggtitle('Average Monthly Daffodil Sales by Location')
+plot
 ```
+
+## Things to improve from next month
+<font size = '5'> Summaries </font> <br>
+<font size ='4'>
+- not-hashed Polish signs - encoding  <br>
+- standardized file length  <br>
+- unique column names - count columns  <br>
+</font>
+
+<font size = '5'> Daffodils </font> <br>
+<font size ='4'>
+- no other IDs than in Stores - e.g. ID 345 <br>
+- unified submitting location forms - strange record in March <br>
+</font>
+
+<font size = '5'> Stores </font> <br>
+<font size ='4'>
+- unified store names - Swiebodzin <br>
+- complete list of stores <br>
+</font>
+
+<font size = '5'> All </font> <br>
+<font size ='4'>
+- unified store IDs - same number of digits <br>
+- established categories for recording sales - e.g. gross/retail/other <br>
+</font>
+
+
+
 
