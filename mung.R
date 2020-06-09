@@ -145,8 +145,10 @@ summary_import        <- function(summary_fileList, loc_index){
   
   summary_df$STORE_ID <- str_sub(summary_df$STORE_ID, -3)
   
+  summary_df$STORE_NAME <- stri_trans_general(summary_df$STORE_NAME, "Latin-ASCII") %>% str_to_upper()
   
-  # POLISH ENCODING ----
+  
+  # ENCODING DECONSTRUCTION ----
   
   summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "\\?OM\\?A")] <- 
     str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "\\?OM\\?A")],
@@ -163,10 +165,10 @@ summary_import        <- function(summary_fileList, loc_index){
                 pattern = "OSTRO\\?\\?KA", 
                 replacement = "OSTROLEKA")
   
-  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "\\?ÓD\\?")] <- 
-    str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "\\?ÓD\\?")],
-                pattern = "\\?ÓD\\?", 
-                replacement = "LÓDZ")
+  summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "\\?OD\\?")] <- 
+    str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "\\?OD\\?")],
+                pattern = "\\?OD\\?", 
+                replacement = "LODZ")
   
   summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "GDA\\?SK")] <- 
     str_replace(summary_df$STORE_NAME[str_detect(summary_df$STORE_NAME, "GDA\\?SK")],
@@ -215,7 +217,6 @@ summary_import        <- function(summary_fileList, loc_index){
   
   #----
   
-  summary_df$STORE_NAME <- stri_trans_general(summary_df$STORE_NAME, "Latin-ASCII") %>% str_to_upper()
   
   summary_df  <- arrange(summary_df, STORE_NAME)
   
@@ -412,6 +413,7 @@ daffodils_aggregator  <- function(daffodils){
 
 merger                <- function(summaries,daffo_aggr){
   
+  
   # PAIR IDENTIFICATION
   summary_title <- unlist(str_split(summaries[[2]], " "))
   summary_title <- summary_title[(length(summary_title)-1):length(summary_title)]
@@ -421,12 +423,21 @@ merger                <- function(summaries,daffo_aggr){
   summary_title <- str_c(summary_month,summary_year, sep = "")
   
   
+  index <- 0
+  
   for(q in 1:length(daffo_aggr)){
     
     if(daffo_aggr[[q]][[2]] == summary_title){
-      
+      index <- q
       break
     }
+  }
+  
+  if(index == 0){
+    
+    stop("Discrepancy between Summary of Sales and Daffoddils files detected.
+  Check if the Summary Statements correspond with Sheets from Daffodils.xls.")
+    
   }
   
   
@@ -440,9 +451,9 @@ merger                <- function(summaries,daffo_aggr){
   
   
   
-  for(i in seq(4, ncol(daffo_aggr[[1]][[1]]) - 4, 2)){
+  for(i in seq(4, ncol(daffo_aggr[[index]][[1]]) - 4, 2)){
     
-    colnameTotal  <- colnames(daffo_aggr[[q]][[1]])[i]
+    colnameTotal  <- colnames(daffo_aggr[[index]][[1]])[i]
     colnameTotal  <- as.numeric(str_extract(colnameTotal, "[^_]+"))
     
     
@@ -451,22 +462,22 @@ merger                <- function(summaries,daffo_aggr){
     
     
     # FILLING STASHES #####
-    for(j in 1:(nrow(daffo_aggr[[q]][[1]])-1)){
+    for(j in 1:(nrow(daffo_aggr[[index]][[1]])-1)){
       
-      if(daffo_aggr[[q]][[1]][j,ncol(daffo_aggr[[q]][[1]])] == 1){
+      if(daffo_aggr[[index]][[1]][j,ncol(daffo_aggr[[index]][[1]])] == 1){
         
-        stash_total[1,"OTHER"] <- stash_total[1,"OTHER"]    + daffo_aggr[[q]][[1]][j,i]
-        stash_count[1,"OTHER"] <- stash_count[1,"OTHER"]    + daffo_aggr[[q]][[1]][j,i+1]
+        stash_total[1,"OTHER"] <- stash_total[1,"OTHER"]    + daffo_aggr[[index]][[1]][j,i]
+        stash_count[1,"OTHER"] <- stash_count[1,"OTHER"]    + daffo_aggr[[index]][[1]][j,i+1]
       }
-      else if(daffo_aggr[[q]][[1]][j,ncol(daffo_aggr[[q]][[1]])-1] == 1){
+      else if(daffo_aggr[[index]][[1]][j,ncol(daffo_aggr[[index]][[1]])-1] == 1){
         
-        stash_total[1,"RETAIL"] <- stash_total[1,"RETAIL"]  + daffo_aggr[[q]][[1]][j,i]
-        stash_count[1,"RETAIL"] <- stash_count[1,"RETAIL"]  + daffo_aggr[[q]][[1]][j,i+1]
+        stash_total[1,"RETAIL"] <- stash_total[1,"RETAIL"]  + daffo_aggr[[index]][[1]][j,i]
+        stash_count[1,"RETAIL"] <- stash_count[1,"RETAIL"]  + daffo_aggr[[index]][[1]][j,i+1]
       }
-      else if(daffo_aggr[[q]][[1]][j,ncol(daffo_aggr[[q]][[1]])-2] == 1){
+      else if(daffo_aggr[[index]][[1]][j,ncol(daffo_aggr[[index]][[1]])-2] == 1){
         
-        stash_total[1,"GROSS"] <- stash_total[1,"GROSS"]    + daffo_aggr[[q]][[1]][j,i]
-        stash_count[1,"GROSS"] <- stash_count[1,"GROSS"]    + daffo_aggr[[q]][[1]][j,i+1]
+        stash_total[1,"GROSS"] <- stash_total[1,"GROSS"]    + daffo_aggr[[index]][[1]][j,i]
+        stash_count[1,"GROSS"] <- stash_count[1,"GROSS"]    + daffo_aggr[[index]][[1]][j,i+1]
       }
       
     }
